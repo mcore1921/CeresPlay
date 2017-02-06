@@ -8,6 +8,8 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
+#undef DEBUG_OUTPUT
+
 class WeightDataDay
 {
 public:
@@ -36,13 +38,17 @@ std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, const T* const x
   if (days.size() < 1)
     return r;
   r.push_back(T(0));
+#ifdef DEBUG_OUTPUT
   std::cout << 0 << " " << r[0] << std::endl;
+#endif
   for (int i = 1; i < days.size(); i++)
   {
     r.push_back(estDailyLoss(T(days[i-1].m_weight), 
 			     T(days[i-1].m_actEstimate) * x[0],
 			     T(days[i-1].m_calIntake)));
+#ifdef DEBUG_OUTPUT
     std::cout << i << " " << r[i] << std::endl;
+#endif
   }
 }
 
@@ -58,13 +64,16 @@ struct CostFunctor {
      {
        rollingWeightEstimate -= lossVector[i];
        T dailyError = T(s_days[i].m_weight) - rollingWeightEstimate;
-       residual[0] += T(dailyError);
+//       residual[0] += (T(dailyError));
+       residual[0] += (dailyError < T(0)) ? dailyError*T(-1.0) : dailyError;
+#ifdef DEBUG_OUTPUT
        std::cout << "inside CostFunctor:" << i << " " << x[0]
 		 << " " << s_days[i].m_weight
 		 << " " << rollingWeightEstimate 
 		 << " " << dailyError 
 		 << " " << residual[0] 
 		 << std::endl;
+#endif
      }
 //     residual[0] = T(10.0) - x[0];
      return true;
@@ -92,7 +101,6 @@ int main(int argc, char** argv) {
   s_days.push_back(WeightDataDay(c++, 238.8, 1725, 1.2));
   s_days.push_back(WeightDataDay(c++, 238.8, 1535, 1.2));
   s_days.push_back(WeightDataDay(c++, 238.0, 1130, 1.2));
-//  estDailyLoss(s_days);
 
   // The variable to solve for with its initial value.
   double initial_x = 1.0;
