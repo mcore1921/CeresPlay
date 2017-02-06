@@ -9,6 +9,7 @@ using ceres::Solver;
 using ceres::Solve;
 
 #undef DEBUG_OUTPUT
+//#define DEBUG_OUTPUT
 
 class WeightDataDay
 {
@@ -32,7 +33,9 @@ T estDailyLoss(T baseWeight, T actEstimate, T calIntake)
 }
 
 template <typename T>
-std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, const T* const x)
+std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, 
+			      const T* const actScalar,
+			      const T* const weightOffset)
 {
   std::vector<T> r;
   if (days.size() < 1)
@@ -43,8 +46,8 @@ std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, const T* const x
 #endif
   for (int i = 1; i < days.size(); i++)
   {
-    r.push_back(estDailyLoss(T(days[i-1].m_weight), 
-			     T(days[i-1].m_actEstimate) * x[0],
+    r.push_back(estDailyLoss(T(days[i-1].m_weight),
+			     T(days[i-1].m_actEstimate) * actScalar[0],
 			     T(days[i-1].m_calIntake)));
 #ifdef DEBUG_OUTPUT
     std::cout << i << " " << r[i] << std::endl;
@@ -56,10 +59,13 @@ std::vector<WeightDataDay> s_days;
 
 struct CostFunctor {
    template <typename T>
-   bool operator()(const T* const x, T* residual) const {
+   bool operator()(const T* const actScalar, 
+		   const T* const weightOffset,
+		   T* residual) const {
      residual[0] = T(0);
-     T rollingWeightEstimate = T(s_days[0].m_weight);
-     std::vector<T> lossVector = estDailyLosses(s_days, x);
+     T rollingWeightEstimate = T(s_days[0].m_weight) + weightOffset[0];
+     std::vector<T> lossVector = estDailyLosses(s_days, 
+						actScalar, weightOffset);
      for (int i = 0; i < s_days.size(); i++)
      {
        rollingWeightEstimate -= lossVector[i];
@@ -67,7 +73,9 @@ struct CostFunctor {
 //       residual[0] += (T(dailyError));
        residual[0] += (dailyError < T(0)) ? dailyError*T(-1.0) : dailyError;
 #ifdef DEBUG_OUTPUT
-       std::cout << "inside CostFunctor:" << i << " " << x[0]
+       std::cout << "inside CostFunctor:" << i 
+		 << " " << actScalar[0]
+		 << " " << weightOffset[0]
 		 << " " << s_days[i].m_weight
 		 << " " << rollingWeightEstimate 
 		 << " " << dailyError 
@@ -106,10 +114,11 @@ int main(int argc, char** argv) {
   s_days.push_back(WeightDataDay(c++, 236.2, 2380, 1.2));
 //  s_days.push_back(WeightDataDay(c++, 235.2, 470,  1.2));
 
-
   // The variable to solve for with its initial value.
-  double initial_x = 1.0;
-  double x = initial_x;
+  double initial_actScalar = 1.0;
+  double actScalar = initial_actScalar;
+  double initial_weightOffset = 0.0;
+  double weightOffset = initial_weightOffset;
 
   // Build the problem.
   Problem problem;
@@ -117,8 +126,10 @@ int main(int argc, char** argv) {
   // Set up the only cost function (also known as residual). This uses
   // auto-differentiation to obtain the derivative (jacobian).
   CostFunction* cost_function =
-      new AutoDiffCostFunction<CostFunctor, 1, 1>(new CostFunctor);
-  problem.AddResidualBlock(cost_function, NULL, &x);
+    new AutoDiffCostFunction<CostFunctor, 1, 1, 1>(new CostFunctor);
+  problem.AddResidualBlock(cost_function, NULL, &actScalar, &weightOffset);
+
+  problem.SetParameterBlockConstant(&weightOffset);
 
   // Run the solver!
   Solver::Options options;
@@ -128,7 +139,11 @@ int main(int argc, char** argv) {
   Solve(options, &problem, &summary);
 
   std::cout << summary.BriefReport() << "\n";
-  std::cout << "x : " << initial_x
-            << " -> " << x << "\n";
+//  std::cout << summary.FullReport() << "\n";
+
+  std::cout << "actScalar : " << initial_actScalar
+            << " -> " << actScalar << "\n";
+  std::cout << "weightOffset : " << initial_weightOffset
+            << " -> " << weightOffset << "\n";
   return 0;
 }
