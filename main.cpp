@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
 
   int c = 1;
-  s_days.push_back(WeightDataDay(c++, 242, 1800, 1.2));
+  s_days.push_back(WeightDataDay(c++, 242,   1800, 1.2));
   s_days.push_back(WeightDataDay(c++, 241.6, 1925, 1.2));
   s_days.push_back(WeightDataDay(c++, 242.6, 1900, 1.2));
   s_days.push_back(WeightDataDay(c++, 241.4, 1840, 1.2));
@@ -100,7 +100,12 @@ int main(int argc, char** argv) {
   s_days.push_back(WeightDataDay(c++, 239.2, 1740, 1.2));
   s_days.push_back(WeightDataDay(c++, 238.8, 1725, 1.2));
   s_days.push_back(WeightDataDay(c++, 238.8, 1535, 1.2));
-  s_days.push_back(WeightDataDay(c++, 238.0, 1130, 1.2));
+  s_days.push_back(WeightDataDay(c++, 238.0, 1730, 1.2));
+  s_days.push_back(WeightDataDay(c++, 237.2, 1740, 1.2));
+  s_days.push_back(WeightDataDay(c++, 236.8, 1770, 1.2));
+  s_days.push_back(WeightDataDay(c++, 236.2, 2380, 1.2));
+//  s_days.push_back(WeightDataDay(c++, 235.2, 470,  1.2));
+
 
   // The variable to solve for with its initial value.
   double initial_x = 1.0;
