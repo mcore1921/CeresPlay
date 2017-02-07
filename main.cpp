@@ -119,6 +119,7 @@ int main(int argc, char** argv) {
   s_days.push_back(WeightDataDay(c++, 237.2, 1740, 1.2));
   s_days.push_back(WeightDataDay(c++, 236.8, 1770, 1.2));
   s_days.push_back(WeightDataDay(c++, 236.2, 2380, 1.2));
+  s_days.push_back(WeightDataDay(c++, 235.2, 1800,  1.2));
 //  s_days.push_back(WeightDataDay(c++, 235.2, 470,  1.2));
 
 // UPDATE THIS to do piecewise slope optimization...
