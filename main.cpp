@@ -4,6 +4,7 @@
 
 #include "WeightDataDay.h"
 #include "HBCostFunctor.h"
+#include "LoadWDD.h"
 
 using ceres::AutoDiffCostFunction;
 using ceres::CostFunction;
@@ -18,38 +19,20 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
 
   std::vector<WeightDataDay> daysVector;
-  int c = 1;
-  daysVector.push_back(WeightDataDay(c++, 242,   1800, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 241.6, 1925, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 242.6, 1900, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 241.4, 1840, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.6, 1880, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.6, 1890, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.4, 1895, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 240,   1831, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.8, 1933, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 240,   1916, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.4, 2110, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.6, 1750, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 238.6, 2150, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 239.2, 1740, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 238.8, 1725, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 238.8, 1535, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 238.0, 1730, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 237.2, 1740, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 236.8, 1770, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 236.2, 2380, 1.2));
-  daysVector.push_back(WeightDataDay(c++, 235.2, 1800,  1.2));
-//  daysVector.push_back(WeightDataDay(c++, 235.2, 470,  1.2));
+  if (loadWDD("data.txt", daysVector) != 0)
+  {
+    std::cerr << "Error - failed to load data.txt" << std::endl;
+    exit(-1);
+  }
 
-// UPDATE THIS to do piecewise slope optimization...
+// Change this value to do piecewise slope optimization...
 // With 1, you'll have a single activity gain
 // With n, you'll have N activity gains, each spread evenly aross the data
 // In both cases you'll only have one offset adjustment
   const int numParameterDims = 1;
   for(auto &wdd : daysVector)
   {
-    double pct = (double)wdd.m_dayNum / (double)c;   
+    double pct = (double)wdd.m_dayNum / (double)daysVector.size();   
     wdd.m_parameterDim = pct*numParameterDims;
   }
 
@@ -71,7 +54,7 @@ int main(int argc, char** argv) {
   // auto-differentiation to obtain the derivative (jacobian).
   HBCostFunctor* hbcf = new HBCostFunctor(daysVector);
   CostFunction* cost_function =
-    new AutoDiffCostFunction<HBCostFunctor, ceres::DYNAMIC, numParameterDims, 1>(hbcf, c-1);
+    new AutoDiffCostFunction<HBCostFunctor, ceres::DYNAMIC, numParameterDims, 1>(hbcf, daysVector.size());
   problem.AddResidualBlock(cost_function, NULL, actScalar, weightOffset);
 
 //  problem.SetParameterBlockConstant(&weightOffset);
@@ -86,6 +69,7 @@ int main(int argc, char** argv) {
   std::cout << summary.BriefReport() << "\n";
 //  std::cout << summary.FullReport() << "\n";
 
+  std::cout << "Loaded " << daysVector.size() << " data points." << std::endl;
   std::cout << "actScalar : " << initial_actScalar;
   for (int i = 0; i < numParameterDims; i++)
   {
@@ -97,9 +81,9 @@ int main(int argc, char** argv) {
 	break;
       }
   }
-  std::cout << "\n";
+  std::cout << std::endl;
   std::cout << "weightOffset : " << initial_weightOffset;
   std::cout << " -> " << weightOffset[0];
-  std::cout << "\n";
+  std::cout << std::endl;
   return 0;
 }
