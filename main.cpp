@@ -21,6 +21,7 @@ public:
   double m_weight;
   double m_calIntake;
   double m_actEstimate;
+  int m_parameterDim;
 };
 
 template <typename T>
@@ -42,15 +43,20 @@ std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days,
     return r;
   r.push_back(T(0));
 #ifdef DEBUG_OUTPUT
+  std::cout << "Daily Losses computed with offset " << weightOffset[0] << std::endl;
   std::cout << 0 << " " << r[0] << std::endl;
 #endif
   for (int i = 1; i < days.size(); i++)
   {
     r.push_back(estDailyLoss(T(days[i-1].m_weight),
-			     T(days[i-1].m_actEstimate) * actScalar[0],
+			     T(days[i-1].m_actEstimate) * actScalar[days[i-1].m_parameterDim],
 			     T(days[i-1].m_calIntake)));
 #ifdef DEBUG_OUTPUT
-    std::cout << i << " " << r[i] << std::endl;
+    std::cout << i 
+	      << " " << r[i] 
+	      << " " << days[i-1].m_parameterDim
+	      << " " << actScalar[days[i-1].m_parameterDim] 
+	      << std::endl;
 #endif
   }
 }
@@ -71,19 +77,20 @@ struct CostFunctor {
        rollingWeightEstimate -= lossVector[i];
        T dailyError = T(s_days[i].m_weight) - rollingWeightEstimate;
 //       residual[0] += (T(dailyError));
-       residual[0] += (dailyError < T(0)) ? dailyError*T(-1.0) : dailyError;
+//       residual[0] += (dailyError < T(0)) ? dailyError*T(-1.0) : dailyError;
+       residual[i] = dailyError;
 #ifdef DEBUG_OUTPUT
        std::cout << "inside CostFunctor:" << i 
-		 << " " << actScalar[0]
+		 << " " << actScalar[s_days[i].m_parameterDim]
 		 << " " << weightOffset[0]
 		 << " " << s_days[i].m_weight
 		 << " " << rollingWeightEstimate 
 		 << " " << dailyError 
-		 << " " << residual[0] 
+		 << " " << residual[i] 
 		 << std::endl;
 #endif
      }
-//     residual[0] = T(10.0) - x[0];
+
      return true;
    }
 };
@@ -114,11 +121,27 @@ int main(int argc, char** argv) {
   s_days.push_back(WeightDataDay(c++, 236.2, 2380, 1.2));
 //  s_days.push_back(WeightDataDay(c++, 235.2, 470,  1.2));
 
+// UPDATE THIS to do piecewise slope optimization...
+// With 1, you'll have a single activity gain
+// With n, you'll have N activity gains, each spread evenly aross the data
+// In both cases you'll only have one offset adjustment
+  const int numParameterDims = 1;
+  for(auto &wdd : s_days)
+  {
+    double pct = (double)wdd.m_dayNum / (double)c;   
+    wdd.m_parameterDim = pct*numParameterDims;
+  }
+
   // The variable to solve for with its initial value.
   double initial_actScalar = 1.0;
-  double actScalar = initial_actScalar;
+  double *actScalar = new double[numParameterDims];
+  for (int i = 0; i < numParameterDims; i++)
+  {
+    actScalar[i] = initial_actScalar;
+  }
   double initial_weightOffset = 0.0;
-  double weightOffset = initial_weightOffset;
+  double weightOffset[1];
+  weightOffset[0] = initial_weightOffset;
 
   // Build the problem.
   Problem problem;
@@ -126,14 +149,14 @@ int main(int argc, char** argv) {
   // Set up the only cost function (also known as residual). This uses
   // auto-differentiation to obtain the derivative (jacobian).
   CostFunction* cost_function =
-    new AutoDiffCostFunction<CostFunctor, 1, 1, 1>(new CostFunctor);
-  problem.AddResidualBlock(cost_function, NULL, &actScalar, &weightOffset);
+    new AutoDiffCostFunction<CostFunctor, ceres::DYNAMIC, numParameterDims, 1>(new CostFunctor, c-1);
+  problem.AddResidualBlock(cost_function, NULL, actScalar, weightOffset);
 
-  problem.SetParameterBlockConstant(&weightOffset);
+//  problem.SetParameterBlockConstant(&weightOffset);
 
   // Run the solver!
   Solver::Options options;
-  options.linear_solver_type = ceres::DENSE_QR;
+//  options.linear_solver_type = ceres::DENSE_QR;
   options.minimizer_progress_to_stdout = true;
   Solver::Summary summary;
   Solve(options, &problem, &summary);
@@ -141,9 +164,20 @@ int main(int argc, char** argv) {
   std::cout << summary.BriefReport() << "\n";
 //  std::cout << summary.FullReport() << "\n";
 
-  std::cout << "actScalar : " << initial_actScalar
-            << " -> " << actScalar << "\n";
-  std::cout << "weightOffset : " << initial_weightOffset
-            << " -> " << weightOffset << "\n";
+  std::cout << "actScalar : " << initial_actScalar;
+  for (int i = 0; i < numParameterDims; i++)
+  {
+    std::cout << " -> " << actScalar[i];
+    for (auto &wdd : s_days)
+      if (wdd.m_parameterDim == i)
+      {
+	std::cout << " (day " << wdd.m_dayNum << ")";
+	break;
+      }
+  }
+  std::cout << "\n";
+  std::cout << "weightOffset : " << initial_weightOffset;
+  std::cout << " -> " << weightOffset[0];
+  std::cout << "\n";
   return 0;
 }
