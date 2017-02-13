@@ -15,6 +15,34 @@ using ceres::Solve;
 #undef DEBUG_OUTPUT
 //#define DEBUG_OUTPUT
 
+void printOutput(double initial_weightOffset,
+		 const std::vector<double>& weightOffset,
+		 double initial_actScalar,
+		 const std::vector<double>& actScalar,
+		 const std::vector<WeightDataDay>& daysVector)
+{
+#ifdef DEBUG_OUTPUT
+  std::cout << summary.BriefReport() << "\n";
+  std::cout << summary.FullReport() << "\n";
+#endif
+
+  std::cout << "actScalar : " << initial_actScalar;
+  for (int i = 0; i < actScalar.size(); i++)
+  {
+    std::cout << " -> " << actScalar[i];
+    for (auto &wdd : daysVector)
+      if (wdd.m_parameterDim == i)
+      {
+	std::cout << " (day " << wdd.m_dayNum << ")";
+	break;
+      }
+  }
+  std::cout << std::endl;
+  std::cout << "weightOffset : " << initial_weightOffset;
+  std::cout << " -> " << weightOffset[0];
+  std::cout << std::endl;
+}  
+
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
 
@@ -29,7 +57,7 @@ int main(int argc, char** argv) {
 // With 1, you'll have a single activity gain
 // With n, you'll have N activity gains, each spread evenly aross the data
 // In both cases you'll only have one offset adjustment
-  const int numParameterDims = 1;
+  const int numParameterDims = 4;
   for(auto &wdd : daysVector)
   {
     double pct = (double)wdd.m_dayNum / (double)daysVector.size();   
@@ -39,11 +67,11 @@ int main(int argc, char** argv) {
 
   // The variable to solve for with its initial value.
   double initial_actScalar = 1.0;
-  double *actScalar = new double[numParameterDims];
-  for (int i = 0; i < numParameterDims; i++)
-    actScalar[i] = initial_actScalar;
+  std::vector<double> actScalar(numParameterDims);
+  for (auto &d : actScalar)
+    d = initial_actScalar;
   double initial_weightOffset = 0.0;
-  double weightOffset[1];
+  std::vector<double> weightOffset(1);
   weightOffset[0] = initial_weightOffset;
 
   // Build the problem.
@@ -54,10 +82,11 @@ int main(int argc, char** argv) {
   HBCostFunctor* hbcf = new HBCostFunctor(daysVector);
   CostFunction* cost_function =
     new AutoDiffCostFunction<HBCostFunctor, ceres::DYNAMIC, numParameterDims, 1>(hbcf, daysVector.size());
-  problem.AddResidualBlock(cost_function, NULL, actScalar, weightOffset);
+  problem.AddResidualBlock(cost_function, NULL, 
+			   actScalar.data(), weightOffset.data());
 
-  problem.SetParameterBlockConstant(actScalar);
-//  problem.SetParameterBlockConstant(weightOffset);
+  problem.SetParameterBlockConstant(actScalar.data());
+  problem.SetParameterBlockVariable(weightOffset.data());
 
   // Run the solver!
   Solver::Options options;
@@ -66,34 +95,33 @@ int main(int argc, char** argv) {
   Solver::Summary summary;
   Solve(options, &problem, &summary);
 
-  std::cout << "actScalar held constant, weightOffset : " 
-	    << initial_weightOffset
-            << " -> " << weightOffset[0] << std::endl;
+  std::cout << "actScalar held constant:" << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      initial_actScalar, actScalar,
+	      daysVector);
 
-
-  for (int i = 0; i < numParameterDims; i++)
-    actScalar[i] = initial_actScalar;
+  for (auto &d : actScalar)
+    d = initial_actScalar;
   weightOffset[0] = initial_weightOffset;
-  problem.SetParameterBlockVariable(actScalar);
+  problem.SetParameterBlockVariable(actScalar.data());
+  problem.SetParameterBlockConstant(weightOffset.data());
   Solve(options, &problem, &summary);
 
-//  std::cout << summary.BriefReport() << "\n";
-//  std::cout << summary.FullReport() << "\n";
+  std::cout << "weightOffset held constant: " << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      initial_actScalar, actScalar,
+	      daysVector);
 
-  std::cout << "actScalar : " << initial_actScalar;
-  for (int i = 0; i < numParameterDims; i++)
-  {
-    std::cout << " -> " << actScalar[i];
-    for (auto &wdd : daysVector)
-      if (wdd.m_parameterDim == i)
-      {
-	std::cout << " (day " << wdd.m_dayNum << ")";
-	break;
-      }
-  }
-  std::cout << std::endl;
-  std::cout << "weightOffset : " << initial_weightOffset;
-  std::cout << " -> " << weightOffset[0];
-  std::cout << std::endl;
+  for (auto &d : actScalar)
+    d = initial_actScalar;
+  weightOffset[0] = initial_weightOffset;
+  problem.SetParameterBlockVariable(actScalar.data());
+  problem.SetParameterBlockVariable(weightOffset.data());
+  Solve(options, &problem, &summary);
+
+  std::cout << "Both parameters optimized: " << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      initial_actScalar, actScalar,
+	      daysVector);
   return 0;
 }
