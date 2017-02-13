@@ -14,10 +14,11 @@ public:
     : m_wdv(wdv) {}
 
   template <typename T>
-  bool operator()(const T* const actScalar, 
-		  const T* const weightOffset,
+  bool operator()(T const* const* parameters,
 		  T* residual) const
     {
+      const T* const actScalar = parameters[0];
+      const T* const weightOffset = parameters[1];
       residual[0] = T(0);
       std::vector<WeightDataDay> wdv(m_wdv);
       T rollingWeightEstimate = T(wdv[0].m_weight) + weightOffset[0];
