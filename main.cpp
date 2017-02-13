@@ -2,8 +2,12 @@
 #include "glog/logging.h"
 #include <map>
 
+#undef DEBUG_OUTPUT
+//#define DEBUG_OUTPUT
+
 #include "WeightDataDay.h"
 #include "HBCostFunctor.h"
+#include "LinearCostFunctor.h"
 #include "LoadWDD.h"
 
 using ceres::AutoDiffCostFunction;
@@ -13,21 +17,20 @@ using ceres::Problem;
 using ceres::Solver;
 using ceres::Solve;
 
-#undef DEBUG_OUTPUT
-//#define DEBUG_OUTPUT
 
 void printOutput(double initial_weightOffset,
 		 const std::vector<double>& weightOffset,
 		 double initial_actScalar,
 		 const std::vector<double>& actScalar,
-		 const std::vector<WeightDataDay>& daysVector)
+		 const std::vector<WeightDataDay>& daysVector,
+		 const Solver::Summary& summary)
 {
 #ifdef DEBUG_OUTPUT
   std::cout << summary.BriefReport() << "\n";
   std::cout << summary.FullReport() << "\n";
 #endif
 
-  std::cout << "actScalar : " << initial_actScalar;
+  std::cout << "    actScalar : " << initial_actScalar;
   for (int i = 0; i < actScalar.size(); i++)
   {
     std::cout << " -> " << actScalar[i];
@@ -39,9 +42,11 @@ void printOutput(double initial_weightOffset,
       }
   }
   std::cout << std::endl;
-  std::cout << "weightOffset : " << initial_weightOffset;
+  std::cout << "    weightOffset : " << initial_weightOffset;
   std::cout << " -> " << weightOffset[0];
   std::cout << std::endl;
+  std::cout << "    cost : " << summary.initial_cost
+	    << " -> " << summary.final_cost << std::endl;
 }  
 
 int main(int argc, char** argv) {
@@ -81,6 +86,69 @@ int main(int argc, char** argv) {
     d = initial_actScalar;
   weightOffset[0] = initial_weightOffset;
 
+  // Stack layer for Linear solution
+  {
+  std::cout << "*** LINEAR SOLUTION ***" << std::endl;
+  Problem problem;
+  LinearCostFunctor* lcf = new LinearCostFunctor(daysVector);
+  DynamicAutoDiffCostFunction<LinearCostFunctor>* cost_function =
+    new DynamicAutoDiffCostFunction<LinearCostFunctor>(lcf);
+  cost_function->AddParameterBlock(1);
+  cost_function->AddParameterBlock(1);
+  cost_function->SetNumResiduals(daysVector.size());
+  problem.AddResidualBlock(cost_function, NULL, 
+			   actScalar.data(), 
+			   weightOffset.data());
+
+  Solver::Options options;
+//  options.linear_solver_type = ceres::DENSE_QR;
+//  options.minimizer_progress_to_stdout = true;
+  Solver::Summary summary;
+  double linInit_actScalar = (daysVector[0].m_weight-daysVector[daysVector.size()-1].m_weight)/(double)daysVector.size();
+
+  // Optimizing Offset
+  actScalar[0] = linInit_actScalar;
+  weightOffset[0] = initial_weightOffset;
+  problem.SetParameterBlockConstant(actScalar.data());
+  problem.SetParameterBlockVariable(weightOffset.data());
+  Solve(options, &problem, &summary);
+
+  std::cout << "  actScalar held constant " << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      linInit_actScalar, actScalar,
+	      daysVector, summary);
+
+  // Optimizing Offset
+  actScalar[0] = linInit_actScalar;
+  weightOffset[0] = initial_weightOffset;
+  problem.SetParameterBlockVariable(actScalar.data());
+  problem.SetParameterBlockConstant(weightOffset.data());
+  Solve(options, &problem, &summary);
+
+  std::cout << "  weightOffset held constant " << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      linInit_actScalar, actScalar,
+	      daysVector, summary);
+
+
+  // Optimizing all variables
+  actScalar[0] = linInit_actScalar;
+  weightOffset[0] = initial_weightOffset;
+  problem.SetParameterBlockVariable(actScalar.data());
+  problem.SetParameterBlockVariable(weightOffset.data());
+  Solve(options, &problem, &summary);
+
+  std::cout << "  Both parameters optimized: " << std::endl;
+  printOutput(initial_weightOffset, weightOffset,
+	      linInit_actScalar, actScalar,
+	      daysVector, summary);
+
+
+  }
+
+  // Stack layer for HB solution
+  {
+  std::cout << "*** HB SOLUTION ***" << std::endl;
   Problem problem;
   HBCostFunctor* hbcf = new HBCostFunctor(daysVector);
   DynamicAutoDiffCostFunction<HBCostFunctor>* cost_function =
@@ -105,10 +173,10 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockVariable(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "actScalar held constant:" << std::endl;
+  std::cout << "  actScalar held constant:" << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
-	      daysVector);
+	      daysVector, summary);
 
   // Next holding offset constant and optimizing gain
   for (auto &d : actScalar)
@@ -118,10 +186,10 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockConstant(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "weightOffset held constant: " << std::endl;
+  std::cout << "  weightOffset held constant: " << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
-	      daysVector);
+	      daysVector, summary);
 
   // Last optimizing all variables
   for (auto &d : actScalar)
@@ -131,9 +199,10 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockVariable(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "Both parameters optimized: " << std::endl;
+  std::cout << "  Both parameters optimized: " << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
-	      daysVector);
+	      daysVector, summary);
+  }
   return 0;
 }
