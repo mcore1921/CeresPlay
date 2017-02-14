@@ -8,6 +8,7 @@
 #include "WeightDataDay.h"
 #include "HBCostFunctor.h"
 #include "LinearCostFunctor.h"
+#include "CalFitCostFunctor.h"
 #include "LoadWDD.h"
 
 using ceres::AutoDiffCostFunction;
@@ -144,6 +145,42 @@ int main(int argc, char** argv) {
 	      daysVector, summary);
 
 
+  }
+
+  // Stack layer for Calorie Estimation
+  {
+  std::cout << "*** CALORIE ESTIMATE ***" << std::endl;
+
+  double aveCal = 0;
+  for (auto &wdd : daysVector)
+    aveCal += wdd.m_calIntake;
+  aveCal = aveCal / daysVector.size();
+
+  Problem problem;
+  double initial_cal = 2000.0;
+  std::vector<double> cal(1);
+  cal[0] = initial_cal;
+  CalFitCostFunctor* lcf = new CalFitCostFunctor(daysVector);
+  DynamicAutoDiffCostFunction<CalFitCostFunctor>* cost_function =
+    new DynamicAutoDiffCostFunction<CalFitCostFunctor>(lcf);
+  cost_function->AddParameterBlock(1);
+  cost_function->SetNumResiduals(daysVector.size());
+  problem.AddResidualBlock(cost_function, NULL, 
+			   cal.data());
+
+  Solver::Options options;
+//  options.linear_solver_type = ceres::DENSE_QR;
+//  options.minimizer_progress_to_stdout = true;
+  Solver::Summary summary;
+
+  Solve(options, &problem, &summary);
+
+  std::cout << "  Calories estimated (as check) : " << std::endl;
+  std::cout << "    average cal from input data : " << aveCal << std::endl;
+  std::cout << "    cal : " << initial_cal 
+	    << " -> " << cal[0] << std::endl;
+  std::cout << "    cost : " << summary.initial_cost
+	    << " -> " << summary.final_cost << std::endl;
   }
 
   // Stack layer for HB solution
