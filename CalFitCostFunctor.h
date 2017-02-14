@@ -18,9 +18,10 @@ public:
 		  T* residual) const
     {
       const T* const cal = parameters[0];
+      const T* const weightOffset = parameters[1];
       residual[0] = T(0);
       std::vector<WeightDataDay> wdv(m_wdv);
-      T rollingWeightEstimate = T(wdv[0].m_weight);
+      T rollingWeightEstimate = T(wdv[0].m_weight) + weightOffset[0];
       std::vector<T> lossVector = estDailyLosses(wdv, cal);
       for (int i = 0; i < wdv.size(); i++)
       {

@@ -160,13 +160,16 @@ int main(int argc, char** argv) {
   double initial_cal = 2000.0;
   std::vector<double> cal(1);
   cal[0] = initial_cal;
+  weightOffset[0] = initial_weightOffset;
   CalFitCostFunctor* lcf = new CalFitCostFunctor(daysVector);
   DynamicAutoDiffCostFunction<CalFitCostFunctor>* cost_function =
     new DynamicAutoDiffCostFunction<CalFitCostFunctor>(lcf);
   cost_function->AddParameterBlock(1);
+  cost_function->AddParameterBlock(1);
   cost_function->SetNumResiduals(daysVector.size());
   problem.AddResidualBlock(cost_function, NULL, 
-			   cal.data());
+			   cal.data(),
+			   weightOffset.data());
 
   Solver::Options options;
 //  options.linear_solver_type = ceres::DENSE_QR;
@@ -179,6 +182,8 @@ int main(int argc, char** argv) {
   std::cout << "    average cal from input data : " << aveCal << std::endl;
   std::cout << "    cal : " << initial_cal 
 	    << " -> " << cal[0] << std::endl;
+  std::cout << "    weightOffset : " << initial_weightOffset
+	    << " -> " << weightOffset[0] << std::endl;
   std::cout << "    cost : " << summary.initial_cost
 	    << " -> " << summary.final_cost << std::endl;
   }
