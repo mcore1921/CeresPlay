@@ -6,12 +6,16 @@
 #include "glog/logging.h"
 #include <map>
 #include "WeightDataDay.h"
+#include "HBModelParams.h"
 
 class HBCostFunctor {
 public:
   
-  HBCostFunctor(const std::vector<WeightDataDay>& wdv)
-    : m_wdv(wdv) {}
+  HBCostFunctor(const HBModelParams& hbParams,
+		const std::vector<WeightDataDay>& wdv)
+    : m_wdv(wdv)
+    , m_hbParams(hbParams)
+    {}
 
   template <typename T>
   bool operator()(T const* const* parameters,
@@ -45,23 +49,28 @@ public:
     }
   
   std::vector<WeightDataDay> m_wdv;
+  HBModelParams m_hbParams;
 
 private:
 
   template <typename T>
-  static T estDailyLoss(T baseWeight, T actEstimate, T calIntake) 
+  T estDailyLoss(T baseWeight, T actEstimate, T calIntake) const
     {
-      const T height = T(74);
-      const T age = T(39);
-      T bmr=(66.0+(6.23*baseWeight)+(12.7*height)-(6.8*age))*actEstimate;
+      const T height = T(m_hbParams.m_height);
+      const T age = T(m_hbParams.m_age);
+      T bmr = T(0);
+      if (m_hbParams.m_gender == HBModelParams::MALE)
+	bmr=(66.0+(6.23*baseWeight)+(12.7*height)-(6.8*age))*actEstimate;
+      else if (m_hbParams.m_gender == HBModelParams::FEMALE)
+	bmr=(655.0+(4.35*baseWeight)+(4.7*height)-(4.7*age))*actEstimate;
       return (bmr-calIntake)/T(3500);
     }
 
 
   template <typename T>
-  static std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, 
+  std::vector<T> estDailyLosses(std::vector<WeightDataDay>& days, 
 				const T* const actScalar,
-				const T* const weightOffset)
+				const T* const weightOffset) const
     {
       std::vector<T> r;
       if (days.size() < 1)

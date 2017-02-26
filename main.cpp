@@ -53,15 +53,9 @@ void printOutput(double initial_weightOffset,
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
 
-  std::vector<WeightDataDay> daysVector;
-  if (loadWDD("data.txt", daysVector) != 0)
-  {
-    std::cerr << "Error - failed to load data.txt" << std::endl;
-    exit(-1);
-  }
-
 // Change this value to do piecewise slope optimization...
   int numParameterDims = 1;
+  std::string datafile("data.txt");
   for (int i = 1; i < argc; i++)
   {
     std::string s(argv[i]);
@@ -70,6 +64,19 @@ int main(int argc, char** argv) {
       std::stringstream ss(std::string(argv[i+1]));
       ss >> numParameterDims;
     }
+    else if (s == "-d" && argc > i+1)
+    {
+      datafile = std::string(argv[i+1]);
+    }
+  }
+
+  HBModelParams hbParams;
+
+  std::vector<WeightDataDay> daysVector;
+  if (loadWDD(datafile.c_str(), hbParams, daysVector) != 0)
+  {
+    std::cerr << "Error - failed to load " << datafile << std::endl;
+    exit(-1);
   }
 
   for(auto &wdd : daysVector)
@@ -192,7 +199,7 @@ int main(int argc, char** argv) {
   {
   std::cout << "*** HB SOLUTION ***" << std::endl;
   Problem problem;
-  HBCostFunctor* hbcf = new HBCostFunctor(daysVector);
+  HBCostFunctor* hbcf = new HBCostFunctor(hbParams, daysVector);
   DynamicAutoDiffCostFunction<HBCostFunctor>* cost_function =
     new DynamicAutoDiffCostFunction<HBCostFunctor>(hbcf);
   cost_function->AddParameterBlock(numParameterDims);

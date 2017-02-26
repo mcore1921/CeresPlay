@@ -1,0 +1,12 @@
+GENDER  FEMALE
+HEIGHT  66
+AGE     45
+// Columns are as follows (all values will be read as doubles):
+// Weight  Calorie_Intake  Activity_multiplier
+154.8   1990   1.35
+153.8   1750   1.35
+153     2045   1.35
+153     1850   1.35
+152.2   2390   1.35
+151.8   1705   1.35
+152.2   3140   1.35
