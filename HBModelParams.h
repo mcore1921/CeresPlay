@@ -1,4 +1,5 @@
 #pragma once
+#include <ctime>
 
 class HBModelParams
 {
@@ -7,20 +8,20 @@ public:
 		MALE = 1,
 		FEMALE = 2 };
 
-  HBModelParams(HBModelParams::Gender g, double h, double a)
+  HBModelParams(HBModelParams::Gender g, double h, time_t dob)
     : m_gender(g)
     , m_height(h)
-    , m_age(a)
+    , m_dob(dob)
     {}
 
   HBModelParams()
     : m_gender(UNSPECIFIED)
     , m_height(0)
-    , m_age(0)
+    , m_dob(time_t(0))
     {}
 
   Gender m_gender;
   double m_height;
-  double m_age;
+  time_t m_dob;
 
 };

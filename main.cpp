@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockVariable(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "  actScalar held constant " << std::endl;
+  std::cout << "  weightOffset optimized " << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      linInit_actScalar, actScalar,
 	      daysVector, summary);
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockConstant(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "  weightOffset held constant " << std::endl;
+  std::cout << "  actScalar optimized " << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      linInit_actScalar, actScalar,
 	      daysVector, summary);
@@ -222,7 +222,7 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockVariable(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "  actScalar held constant:" << std::endl;
+  std::cout << "  weightOffset optimized:" << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
 	      daysVector, summary);
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
   problem.SetParameterBlockConstant(weightOffset.data());
   Solve(options, &problem, &summary);
 
-  std::cout << "  weightOffset held constant: " << std::endl;
+  std::cout << "  actScalar optimized: " << std::endl;
   printOutput(initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
 	      daysVector, summary);

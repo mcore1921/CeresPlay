@@ -37,6 +37,7 @@ public:
 	std::cout << "inside CostFunctor:" << i 
 		  << " " << actScalar[wdv[i].m_parameterDim]
 		  << " " << weightOffset[0]
+		  << " " << wdv[i].m_date
 		  << " " << wdv[i].m_weight
 		  << " " << rollingWeightEstimate 
 		  << " " << dailyError 
@@ -54,10 +55,11 @@ public:
 private:
 
   template <typename T>
-  T estDailyLoss(T baseWeight, T actEstimate, T calIntake) const
+  T estDailyLoss(T baseWeight, T actEstimate, T calIntake, time_t date) const
     {
+      const double secPerYear = 31557600.0;
       const T height = T(m_hbParams.m_height);
-      const T age = T(m_hbParams.m_age);
+      const T age = T((date - m_hbParams.m_dob) / secPerYear);
       T bmr = T(0);
       if (m_hbParams.m_gender == HBModelParams::MALE)
 	bmr=(66.0+(6.23*baseWeight)+(12.7*height)-(6.8*age))*actEstimate;
@@ -84,7 +86,8 @@ private:
       {
 	r.push_back(estDailyLoss(T(days[i-1].m_weight),
 				 T(days[i-1].m_actEstimate) * actScalar[days[i-1].m_parameterDim],
-				 T(days[i-1].m_calIntake)));
+				 T(days[i-1].m_calIntake),
+				 days[i-1].m_date));
 #ifdef DEBUG_OUTPUT
 	std::cout << i 
 		  << " " << r[i] 
