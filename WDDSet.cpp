@@ -4,6 +4,8 @@
 #include <string>
 #include <sstream>
 #include <ctime>
+#include <map>
+#include <algorithm>
 
 namespace {
 
@@ -18,6 +20,21 @@ void init_tm(struct tm& t)
   t.tm_wday = 0;
   t.tm_yday = 0;
   t.tm_isdst = 0;
+}
+
+tm init_tm()
+{
+  tm t;
+  t.tm_sec = 0;
+  t.tm_min = 0;
+  t.tm_hour = 0;
+  t.tm_mday = 0;
+  t.tm_mon = 0;
+  t.tm_year = 0;
+  t.tm_wday = 0;
+  t.tm_yday = 0;
+  t.tm_isdst = 0;
+  return t;
 }
 
 time_t timeFromString(std::string timestring)
@@ -121,4 +138,61 @@ void WDDSet::initParameterDimsLinear(int numParameterDims)
     wdd.m_parameterDim = pct*m_numParameterDims;
   }
   
+}
+
+// Any month with fewer days than this will be lumped in with prior / post months.
+void WDDSet::initParameterDimsMonthly(int cutoffDays)
+{
+  // Map count of months since 1900 to # entries in that month
+  std::map<int, int> paramMap, monthCount;
+  for (auto &wdd : m_daysVector)
+  {
+    tm t = *gmtime(&wdd.m_date);
+    // Cheat a bit and rely on auto-initialization of val to 0 if key isn't present
+    monthCount[t.tm_year*12+t.tm_mon]++;
+  }
+
+  std::vector<int> keys;
+  for (auto &mcEntry : monthCount)
+    keys.push_back(mcEntry.first);
+  // Sort the keys to be sure we attack in the appropriate order
+  std::sort(keys.begin(), keys.end());
+  int paramDim = 0;
+
+  for (int i = 0; i < keys.size(); i++)
+  {
+    // If there aren't enough days, use the running counter and
+    // don't increment.  Note this covers the starting condition where there's
+    // only one month, or there aren't enough days in the first month to warrant
+    // its own dimension.
+    // This does not cover the final month not having enough days; that's something
+    // we'll check after the loop is over
+    if (monthCount[keys[i]] < cutoffDays)
+    {
+      paramMap[keys[i]] = paramDim;
+    }
+    else
+    {
+      paramMap[keys[i]] = paramDim;
+      paramDim++;
+    }
+  }
+
+  // Now check for the condition that the last month was short; 
+  // In this case we'll set its dim to the prior month
+  if (keys.size() > 1 &&
+      monthCount[keys[keys.size()-1]] < cutoffDays)
+  {
+    paramMap[keys[keys.size()-1]] = paramMap[keys[keys.size()-2]];
+  }
+      
+  // Now we have an appropriate mapping; let's go mark each WDD correctly
+  for (auto &wdd : m_daysVector)
+  {
+    tm t = *gmtime(&wdd.m_date);
+    wdd.m_parameterDim = paramMap[t.tm_year*12+t.tm_mon];
+  }
+
+  // Lastly, set the number of parameters
+  m_numParameterDims = paramMap[keys[keys.size()-1]] + 1;
 }
