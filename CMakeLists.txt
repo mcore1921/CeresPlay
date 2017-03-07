@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 2.6)
 project (WeightFitting)
 SET(CMAKE_CXX_FLAGS "-std=c++0x")
-add_executable(WeightFitting main.cpp LoadWDD.cpp)
+add_executable(WeightFitting main.cpp WDDSet.cpp Solution.cpp LinearSolution.cpp CalorieFitSolution.cpp HBSolution.cpp)
 
 find_package(Ceres REQUIRED)
 

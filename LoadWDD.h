@@ -8,3 +8,4 @@
 int loadWDD(const char* filename, 
 	    HBModelParams& params,
 	    std::vector<WeightDataDay>& retval);
+
