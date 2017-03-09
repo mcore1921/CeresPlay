@@ -4,7 +4,6 @@
 //#define DEBUG_OUTPUT
 
 #include "WeightDataDay.h"
-//#include "LoadWDD.h"
 #include "WDDSet.h"
 #include "Solution.h"
 #include "LinearSolution.h"
@@ -62,12 +61,17 @@ int main(int argc, char** argv) {
   std::vector<std::unique_ptr<Solution> > sols;
   sols.push_back(std::unique_ptr<Solution>(new LinearSolution(wddSet)));
   sols.push_back(std::unique_ptr<Solution>(new CalorieFitSolution(wddSet)));
-  sols.push_back(std::unique_ptr<Solution>(new HBSolution(wddSet)));
   for (auto& s : sols)
   {
     s->solve();
     std::cout << s->solutionDescription();
   }
+
+  std::unique_ptr<HBSolution> hbSol(new HBSolution(wddSet));
+  hbSol->solve();
+  std::cout << hbSol->solutionDescription();
+  std::cout << std::endl;
+  std::cout << hbSol->importString();
 
   return 0;
 }

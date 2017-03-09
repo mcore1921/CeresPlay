@@ -14,5 +14,9 @@ public:
 
   // Returns 0 on success
   virtual int solve();
+  
+  std::string importString() { return m_importString; }
 
+private:
+  std::string m_importString;
 };

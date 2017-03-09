@@ -17,6 +17,10 @@ int HBSolution::solve()
   weightOffset[0] = initial_weightOffset;
 
   std::stringstream oss;
+  double offset_woOnly;
+  std::map<int, double> gain_asOnly;
+  double offset_both;
+  std::map<int, double> gain_both;
 
   oss << "*** HB SOLUTION ***" << std::endl;
   Problem problem;
@@ -48,6 +52,7 @@ int HBSolution::solve()
 	      initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
 	      m_wddSet.m_daysVector, summary);
+  offset_woOnly = weightOffset[0];
 
   // Next holding offset constant and optimizing gain
   for (auto &d : actScalar)
@@ -62,6 +67,15 @@ int HBSolution::solve()
 	      initial_weightOffset, weightOffset,
 	      initial_actScalar, actScalar,
 	      m_wddSet.m_daysVector, summary);
+  for (int i = 0; i < actScalar.size(); i++)
+  {
+    for (auto &wdd : m_wddSet.m_daysVector)
+      if (wdd.m_parameterDim == i)
+      {
+	gain_asOnly[wdd.m_dayNum] = actScalar[i];
+	break;
+      }
+  }
 
   // Last optimizing all variables
   for (auto &d : actScalar)
@@ -77,7 +91,49 @@ int HBSolution::solve()
 	      initial_actScalar, actScalar,
 	      m_wddSet.m_daysVector, summary);
 
+  offset_both = weightOffset[0];
+  for (int i = 0; i < actScalar.size(); i++)
+  {
+    for (auto &wdd : m_wddSet.m_daysVector)
+      if (wdd.m_parameterDim == i)
+      {
+	gain_both[wdd.m_dayNum] = actScalar[i];
+	break;
+      }
+  }
+
   m_solutionDescription = oss.str();
+
+  std::stringstream importss;
+  importss << "** OFFSET_ONLY **" << std::endl;
+  importss << "OFFSET" << std::endl;
+  importss << offset_woOnly << std::endl;
+  importss << std::endl;
+
+  importss << "** GAIN_ONLY **" << std::endl;
+  importss << "GAIN" << std::endl;
+  for (auto &p : gain_asOnly)
+    importss << p.first << " ";
+  importss << std::endl;
+  for (auto &p : gain_asOnly)
+    importss << p.second << " ";
+  importss << std::endl;
+  importss << std::endl;
+  
+  importss << "** BOTH **" << std::endl;
+  importss << "OFFSET" << std::endl;
+  importss << offset_both << std::endl;
+  importss << std::endl;
+  importss << "GAIN" << std::endl;
+  for (auto &p : gain_both)
+    importss << p.first << " ";
+  importss << std::endl;
+  for (auto &p : gain_both)
+    importss << p.second << " ";
+  importss << std::endl;
+  importss << std::endl;
+  
+  m_importString = importss.str();
 
 }
 
