@@ -1,5 +1,6 @@
 #include "HBSolution.h"
 #include "HBCostFunctor.h"
+#include <ctime>
 
 using ceres::DynamicAutoDiffCostFunction;
 using ceres::Problem;
@@ -104,7 +105,15 @@ int HBSolution::solve()
 
   m_solutionDescription = oss.str();
 
+  time_t rawtime = time(NULL);
+  struct tm * pTime = localtime(&rawtime);
+  char buffer[256];
+  strftime(buffer, 256, "%Y-%m-%d_%H:%M:%S", pTime);
+
   std::stringstream importss;
+  importss << buffer << std::endl;
+  importss << std::endl;
+
   importss << "** OFFSET_ONLY **" << std::endl;
   importss << "OFFSET" << std::endl;
   importss << offset_woOnly << std::endl;
